@@ -1,0 +1,96 @@
+dir = getDirectory("Choose a Folder");
+setBatchMode(true);
+resultsdir = dir+"results";
+File.makeDirectory(resultsdir);
+run("Set Measurements...", "area mean perimeter redirect=None decimal=3");
+
+// minimal number of counts
+
+count=10
+print(count)
+celllist=getFileList(dir);
+
+
+for(k=0;k<celllist.length;k++)
+{ 
+	open(dir+celllist[k]);
+	cellname=getTitle();
+
+	run("Duplicate...", "title=mask duplicate range=1-14");
+	selectWindow("mask");
+	run("Smooth", "stack");
+	run("Smooth", "stack");
+
+
+//	setAutoThreshold("Otsu");
+	setThreshold(10, 255);
+	run("Convert to Mask", "calculate black");
+	run("Close-", "stack");
+	run("Close-", "stack");	
+//	run("Watershed", "stack");
+//	run("Fill Holes", "stack");
+
+
+	run("Analyze Particles...", "size=1960-19600 pixel circularity=0.4-1.00 show=Nothing display exclude clear include add stack");
+	selectWindow(cellname);
+
+		rois=roiManager("count");
+		
+
+		if(rois>=count)
+
+			{
+			
+
+			print(cellname+"_"+rois+"_use");
+
+      			for (i=0; i<rois; i++)
+				{
+				roiManager("Select", i);
+				getStatistics(area, mean, min, max, std);
+				slice=getSliceNumber();
+				setResult("Mean", i, mean);
+				setResult("SD", i, std);
+				setResult("Slice", i,slice );
+    				setResult("Area", i,area );
+				}
+				updateResults(); 
+				selectWindow("Results");
+				saveAs("Text", ""+dir+"results\\"+cellname+"_rep_Results.txt");
+				selectWindow(cellname);
+				run("Close");
+				selectWindow("mask");
+				run("Close");
+				roiManager("Delete");
+				run("Clear Results");
+
+    				
+			}
+
+
+
+		else if (rois<count)
+			
+			{
+			print(cellname+rois+"_not_use");
+			selectWindow(cellname);
+			run("Close");
+			selectWindow("mask");
+			run("Close");
+			roiManager("Delete");
+			run("Clear Results");
+
+
+			}
+
+
+
+
+
+}
+			
+
+
+
+}
+
