@@ -1,0 +1,75 @@
+
+// RB_200913_t_cell_picking by Rene
+
+// preamble Copryright is René 
+// regular bugs be aware of that the desired folder and image names are not allowed to contain free position e.g. "a b" should be "a_b"
+
+
+
+//setBatchMode(true)
+
+//specify directory < where single channel tiff images are in
+
+dir=getDirectory("Choose a Directory");
+print(dir)
+
+// get image or subset image
+run("Image Sequence...", "open="+dir+" number=14 starting=1 increment=1 scale=100 file=[] or=[] sort");
+
+run("Set Scale...", "distance=1 known=1 pixel=1 unit=µm");
+rename("raw_image");
+makeRectangle(30, 30, 4800, 4800);
+run("Crop");
+
+
+// get nuclei segmented
+run("Duplicate...", "title=prim_object duplicate range=1-1");
+run("Smooth");
+run("Smooth");
+setThreshold(10, 255);
+run("Convert to Mask");
+run("Close-");
+run("Close-");
+run("Watershed");
+
+// get ROIs specify cell size and circularity
+run("Analyze Particles...", "size=1960-20000 pixel circularity=0.4-1.00 show=Nothing display exclude clear add");
+run("Set Measurements...", "  bounding redirect=None decimal=5");
+
+// save ROIs
+maskdir =dir+"ROIs";
+File.makeDirectory(maskdir);
+roiManager("Deselect");
+roiManager("Save", ""+dir+"ROIs\\RoiSet.zip");
+if (!File.exists(maskdir))
+      exit("Fool this folder was already analyzed");
+
+
+// get single cell images > bounding rectangle > specify band width
+celldir =dir+"single_cells";
+File.makeDirectory(celldir);
+if (!File.exists(celldir))
+      exit("Strange that you made it until here, check your folder.");
+
+
+
+// Adjust number of desired cells 
+
+rois=roiManager("count");
+		for (j=0;j<rois;j++) {			
+		roiManager("Select", j);
+		run("Enlarge...", "enlarge=200 pixel");
+		run("Measure");
+		boundx=getResult("BX");
+		boundy=getResult("BY");
+		boundwidth=getResult("Width");
+		boundheight=getResult("Height");
+
+		
+		selectWindow("raw_image");
+		makeRectangle(boundx, boundy, boundwidth, boundheight);
+		run("Duplicate...", "title=cell duplicate range=1-14");
+		saveAs("Tiff", ""+dir+"single_cells\\cell_"+j+".tif");
+		run("Close");
+		run("Clear Results");
+}
